@@ -1,3 +1,7 @@
+env:
+  global:
+     BINTRAY_API_KEY:
+       secure: I+Lvki1TM2pQPJEf75U098GSQexgjudOZ2TDCPSQEdGys7PdW7SIy5THiHYdCG+tO8dSKQ3FUXufDD1KzhHxEBSWUX1rpAgE3SGvxYwzAU+bl3FvoQzjb+WD69ya86h0TFM2fVOJsg4+iDimheHcD+7mCuYx3ga1dsi8lVjh38s=
 sudo: false
 cache:
   directories:
@@ -17,7 +21,7 @@ before_install:
 install: "./gradlew assemble -DexcludeBenchmark"
 script: "./gradlew check -DexcludeBenchmark"
 after_success:
-- "./gradlew buildDistributions -DexcludeBenchmark"
+- "./gradlew -Dbintray.user=jbachorik -Dbintray.project=btrace-maven buildDistributions bintrayUpload -DexcludeBenchmark"
 - codecov
 deploy:
   provider: bintray
@@ -25,3 +29,4 @@ deploy:
   user: "jbachorik"
   key:
     secure: I+Lvki1TM2pQPJEf75U098GSQexgjudOZ2TDCPSQEdGys7PdW7SIy5THiHYdCG+tO8dSKQ3FUXufDD1KzhHxEBSWUX1rpAgE3SGvxYwzAU+bl3FvoQzjb+WD69ya86h0TFM2fVOJsg4+iDimheHcD+7mCuYx3ga1dsi8lVjh38s=
+  on: travis

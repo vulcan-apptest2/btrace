@@ -2,9 +2,10 @@ import javax.tools.ToolProvider
 
 plugins {
     id 'java'
+    id 'maven'
     id 'maven-publish'
     id "nebula.os-package" version "2.2.2"
-    id "com.jfrog.bintray" version "1.2"
+    id "com.jfrog.bintray" version "1.6"
     id "jacoco"
 }
 
@@ -21,6 +22,7 @@ allprojects {
     }
 
     repositories {
+        jcenter()
         mavenLocal()
         mavenCentral()
     }
@@ -33,18 +35,19 @@ allprojects {
 // * release.tag
 // * gpg.passphrase
 bintray {
-    user = project.hasProperty("bintray.user") ? project.property("bintray.user") : ""
-    key = project.hasProperty("bintray.key") ? project.property("bintray.key") : ""
+    user = project.hasProperty("bintray.user") ? project.property("bintray.user") : System.getenv('BINTRAY_USER')
+    key = project.hasProperty("bintray.key") ? project.property("bintray.key") : System.getenv('BINTRAY_API_KEY')
 
     publications = ['agent', 'client', 'boot']
 
-    dryRun = true
-    publish = false
+    dryRun = false
+    publish = true
 
     pkg {
         repo = 'maven'
-        name = 'btrace'
+        name = project.hasProperty("bintray.project") ? project.property("bintray.project") : 'btrace'
         desc = 'BTrace'
+        userOrg = 'btraceio'
         websiteUrl = 'https://github.com/btraceio/btrace'
         issueTrackerUrl = 'https://github.com/btraceio/btrace/issues'
         vcsUrl = 'https://github.com/btraceio/btrace.git'
@@ -52,7 +55,7 @@ bintray {
         labels = []
         publicDownloadNumbers = true
         version {
-            name = '1.4' //Bintray logical version name
+            name = '1.4-SNAPSHOT' //Bintray logical version name
             released  = new java.util.Date()
             vcsTag = project.hasProperty('release.tag') ? project.property('release.tag') : 'dev'
             //Optional configuration for GPG signing
