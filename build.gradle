@@ -32,7 +32,6 @@ allprojects {
 // Add 'gradle.properties' file containing the following properties:
 // * bintray.user
 // * bintray.key
-// * release.tag
 // * gpg.passphrase
 bintray {
     user = project.hasProperty("bintray.user") ? project.property("bintray.user") : System.getenv('BINTRAY_USER')
@@ -40,12 +39,12 @@ bintray {
 
     publications = ['agent', 'client', 'boot']
 
-    dryRun = false
+    dryRun = System.properties['bintrayUpload'] != null ? !(Boolean.getBoolean('bintrayUpload')) : true
     publish = true
 
     pkg {
         repo = 'maven'
-        name = project.hasProperty("bintray.project") ? project.property("bintray.project") : 'btrace'
+        name = 'btrace'
         desc = 'BTrace'
         userOrg = 'btraceio'
         websiteUrl = 'https://github.com/btraceio/btrace'
@@ -55,9 +54,9 @@ bintray {
         labels = []
         publicDownloadNumbers = true
         version {
-            name = '1.4-SNAPSHOT' //Bintray logical version name
+            name = project.version //Bintray logical version name
             released  = new java.util.Date()
-            vcsTag = project.hasProperty('release.tag') ? project.property('release.tag') : 'dev'
+            vcsTag = 'v' + project.version
             //Optional configuration for GPG signing
             gpg {
                 sign = project.hasProperty("gpg.passphrase") //Determines whether to GPG sign the files. The default is false
