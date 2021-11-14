@@ -79,6 +79,7 @@ import org.openjdk.btrace.core.BTraceRuntime;
 import org.openjdk.btrace.core.DebugSupport;
 import org.openjdk.btrace.core.Messages;
 import org.openjdk.btrace.core.SharedSettings;
+import org.openjdk.btrace.core.BTraceSecurityManager;
 import org.openjdk.btrace.core.comm.ErrorCommand;
 import org.openjdk.btrace.core.comm.InstrumentCommand;
 import org.openjdk.btrace.core.comm.StatusCommand;
@@ -133,6 +134,7 @@ public final class Main {
       loadArgs(args);
       // set the debug level based on cmdline config
       settings.setDebug(Boolean.parseBoolean(argMap.get(DEBUG)));
+      BTraceSecurityManager sm = BTraceSecurityManager.install(debug);
       if (isDebug()) {
         debugPrint("parsed command line arguments");
       }
@@ -160,9 +162,10 @@ public final class Main {
                 try {
                   startServer();
                 } finally {
+                  sm.uninstall();
                   BTraceRuntime.leave();
                 }
-              });
+              }, "BTrace Agent Thread");
       // force back-registration of BTraceRuntimeImpl in BTraceRuntime
       BTraceRuntimes.getDefault();
       // init BTraceRuntime
@@ -855,7 +858,7 @@ public final class Main {
           debugPrint("client accepted " + sock);
         }
         ClientContext ctx = new ClientContext(inst, transformer, argMap, settings);
-        Client client = RemoteClient.getClient(ctx, sock, value -> handleNewClient(value));
+        RemoteClient.getClient(ctx, sock, Main::handleNewClient);
       } catch (RuntimeException | IOException re) {
         if (isDebug()) {
           debugPrint(re);
