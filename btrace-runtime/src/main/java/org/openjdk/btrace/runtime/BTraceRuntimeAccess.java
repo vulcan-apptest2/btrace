@@ -115,7 +115,7 @@ public abstract class BTraceRuntimeAccess implements RuntimeContext {
   private static final Set<String> clients = new HashSet<>();
 
   // BTrace Class object corresponding to this client; accessed from instrumented code
-  private Class clazz;
+  private Class<?> clazz;
 
   // instrumentation level field for each runtime; accessed from instrumented code
   private Field level;

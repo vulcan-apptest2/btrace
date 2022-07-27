@@ -67,7 +67,7 @@ public final class InstrumentingMethodVisitor extends MethodVisitor
 
   public InstrumentingMethodVisitor(
       int access, String owner, String name, String desc, MethodVisitor mv) {
-    super(ASM7, mv);
+    super(ASM9, mv);
     this.owner = owner;
     this.name = name;
     this.desc = desc;
@@ -621,7 +621,8 @@ public final class InstrumentingMethodVisitor extends MethodVisitor
               if (typeStr.contains("/") && !typeStr.endsWith(";")) {
                 typeStr += ";";
               }
-              t = Type.getType(typeStr).getElementType();
+              typeStr = typeStr.substring(1);
+              t = Type.getType(typeStr);
             } else {
               t = Type.getObjectType(typeStr);
             }
@@ -1328,10 +1329,19 @@ public final class InstrumentingMethodVisitor extends MethodVisitor
       return Constants.TOP_TYPE;
     }
     if (slotType instanceof Integer) {
-      log.warn("Unknown slot type: {}", slotType);
+      log.warn("Unknown slot type: {} [{}, {}, {}]@{}", slotType, owner, name, desc, line);
+      log.warn("===> locals: {}, stack: {}", locals, stack.toArray());
       return Constants.OBJECT_TYPE;
     }
     return slotType != null ? Type.getObjectType((String) slotType) : Constants.OBJECT_TYPE;
+  }
+
+
+  private int line = -1;
+  @Override
+  public void visitLineNumber(int line, Label start) {
+    super.visitLineNumber(line, start);
+    this.line = line;
   }
 
   static final class LocalVarSlot {
@@ -1400,6 +1410,9 @@ public final class InstrumentingMethodVisitor extends MethodVisitor
     }
 
     public void push(Object val) {
+      if (val == TOP_EXT) {
+        System.out.println("xxx");
+      }
       fitResize(stackPtr);
 
       stack[stackPtr++] = val;

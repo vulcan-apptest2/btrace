@@ -154,7 +154,7 @@ public final class BTraceRuntime {
 
   public static boolean enter() {
     BTraceRuntime.Impl rt = getRt();
-    return rt == null || rt.enter();
+    return rt != null && rt.enter();
   }
 
   /**

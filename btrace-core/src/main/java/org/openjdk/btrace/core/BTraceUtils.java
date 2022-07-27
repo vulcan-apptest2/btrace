@@ -41,6 +41,10 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -3673,10 +3677,22 @@ public class BTraceUtils {
         return (String) obj;
       } else if (obj.getClass().getClassLoader() == null) {
         try {
-          return obj.toString();
+          return CompletableFuture.supplyAsync(() -> {
+            boolean entered = BTraceRuntime.enter();
+            try {
+              return obj.toString();
+            } finally {
+              if (entered) {
+                BTraceRuntime.leave();
+              }
+            }
+          }).get(1, TimeUnit.MICROSECONDS);
         } catch (NullPointerException e) {
           // NPE can be thrown from inside the toString() method we have no control over
           return "null";
+        } catch (InterruptedException | TimeoutException | ExecutionException ignored) {
+//          log.info("", ignored);
+          return identityStr(obj);
         }
       } else {
         return identityStr(obj);

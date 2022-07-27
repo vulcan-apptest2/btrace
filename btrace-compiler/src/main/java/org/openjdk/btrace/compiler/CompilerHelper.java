@@ -118,6 +118,7 @@ class CompilerHelper {
             Iterator<PackGenerator> iter = generators.iterator();
             if (iter.hasNext()) {
               PackGenerator generator = iter.next();
+              System.err.println("===> " + generator);
               SharedSettings.GLOBAL.setBootClassPath(classPath);
               classData = generator.generateProbePack(classData);
             }

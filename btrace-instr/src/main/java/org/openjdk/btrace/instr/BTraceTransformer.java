@@ -101,7 +101,7 @@ public final class BTraceTransformer implements ClassFileTransformer {
         filter.remove(om);
         MethodNode cushionMethod =
             new MethodNode(
-                Opcodes.ASM7,
+                Opcodes.ASM9,
                 Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
                 Instrumentor.getActionMethodName(p, om.getTargetName()),
                 om.getTargetDescriptor(),
@@ -131,6 +131,7 @@ public final class BTraceTransformer implements ClassFileTransformer {
       ProtectionDomain protectionDomain,
       byte[] classfileBuffer)
       throws IllegalClassFormatException {
+    boolean entered = BTraceRuntime.enter();
     try {
       setupLock.readLock().lock();
       if (probes.isEmpty()) return null;
@@ -147,7 +148,6 @@ public final class BTraceTransformer implements ClassFileTransformer {
 
       if (filter.matchClass(className) == Filter.Result.FALSE) return null;
 
-      boolean entered = BTraceRuntime.enter();
       try {
         if (debug.isDumpClasses()) {
           debug.dumpClass(className.replace('.', '/') + "_orig", classfileBuffer);
@@ -168,7 +168,7 @@ public final class BTraceTransformer implements ClassFileTransformer {
           return classfileBuffer;
         } else {
           if (log.isDebugEnabled()) {
-            log.error("transformed class {}", cr.getJavaClassName());
+            log.debug("transformed class {}", cr.getJavaClassName());
           }
           if (debug.isDumpClasses()) {
             debug.dumpClass(className.replace('.', '/'), transformed);
@@ -178,13 +178,12 @@ public final class BTraceTransformer implements ClassFileTransformer {
       } catch (Throwable th) {
         log.debug("Failed to transform class {}", className, th);
         throw th;
-      } finally {
-        if (entered) {
-          BTraceRuntime.leave();
-        }
       }
     } finally {
       setupLock.readLock().unlock();
+      if (entered) {
+        BTraceRuntime.leave();
+      }
     }
   }
 

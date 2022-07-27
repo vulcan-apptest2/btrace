@@ -207,7 +207,7 @@ public class Client {
     byte[] code = null;
     File file = new File(fileName);
     if (fileName.endsWith(".java")) {
-      Compiler compiler = new Compiler(includePath);
+      Compiler compiler = new Compiler(includePath, true);
       classPath += File.pathSeparator + System.getProperty("java.class.path");
       if (log.isDebugEnabled()) {
         log.debug("compiling {}", fileName);
@@ -766,12 +766,12 @@ public class Client {
     ClassReader reader = new ClassReader(code);
     Object[] result = new Object[1];
     reader.accept(
-        new ClassVisitor(Opcodes.ASM7) {
+        new ClassVisitor(Opcodes.ASM9) {
 
           @Override
           public AnnotationVisitor visitAnnotation(String desc, boolean vis) {
             if (desc.equals(DTRACE_DESC)) {
-              return new AnnotationVisitor(Opcodes.ASM7) {
+              return new AnnotationVisitor(Opcodes.ASM9) {
 
                 @Override
                 public void visit(String name, Object value) {
@@ -781,7 +781,7 @@ public class Client {
                 }
               };
             } else if (desc.equals(DTRACE_REF_DESC)) {
-              return new AnnotationVisitor(Opcodes.ASM7) {
+              return new AnnotationVisitor(Opcodes.ASM9) {
 
                 @Override
                 public void visit(String name, Object value) {

@@ -59,6 +59,8 @@ import org.openjdk.btrace.core.DebugSupport;
 import org.openjdk.btrace.core.annotations.Event;
 import org.openjdk.btrace.core.annotations.Return;
 import org.openjdk.btrace.runtime.BTraceRuntimeImplBase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class preprocesses a compiled BTrace program. This is done after BTrace safety verification
@@ -80,6 +82,8 @@ import org.openjdk.btrace.runtime.BTraceRuntimeImplBase;
  *     publicly accessible
  */
 final class Preprocessor {
+  private static final Logger log = LoggerFactory.getLogger(Preprocessor.class);
+
   private static final String ANNOTATIONS_PREFIX = "org/openjdk/btrace/core/annotations/";
   private static final Type TLS_TYPE = Type.getType("L" + ANNOTATIONS_PREFIX + "TLS;");
   private static final Type EXPORT_TYPE = Type.getType("L" + ANNOTATIONS_PREFIX + "Export;");
@@ -483,7 +487,7 @@ final class Preprocessor {
     }
     cn.fields.add(
         new FieldNode(
-            Opcodes.ASM7,
+            Opcodes.ASM9,
             Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_VOLATILE,
             Constants.BTRACE_LEVEL_FLD,
             Constants.INT_DESC,
@@ -498,7 +502,7 @@ final class Preprocessor {
     checkAugmentedReturn(mn);
     scanMethodInstructions(cn, mn, lvg);
     addBTraceErrorHandler(cn, mn);
-    addBTraceRuntimeEnter(cn, mn);
+//    addBTraceRuntimeEnter(cn, mn);
     addJfrHandlerField(cn, mn);
 
     recalculateVars(mn);
@@ -747,6 +751,7 @@ final class Preprocessor {
         }
       } else if (type == AbstractInsnNode.METHOD_INSN) {
         MethodInsnNode min = (MethodInsnNode) n;
+        n = safeToString(min, l);
         n = unfoldServiceInstantiation(cn, min, l);
       } else if (n.getOpcode() == retopcode
           && getClassifiers(mn).contains(MethodClassifier.RT_AWARE)) {
@@ -764,7 +769,7 @@ final class Preprocessor {
     }
     StackTrackingMethodVisitor v =
         new StackTrackingMethodVisitor(
-            new MethodVisitor(Opcodes.ASM7) {
+            new MethodVisitor(Opcodes.ASM9) {
               @Override
               public void visitMaxs(int maxStack, int maxLocals) {
                 super.visitMaxs(maxStack, maxLocals);
@@ -788,7 +793,7 @@ final class Preprocessor {
     if (clinit == null) {
       clinit =
           new MethodNode(
-              Opcodes.ASM7,
+              Opcodes.ASM9,
               (Opcodes.ACC_STATIC | Opcodes.ACC_PUBLIC),
               "<clinit>",
               "()V",
@@ -1101,7 +1106,7 @@ final class Preprocessor {
   private void addRuntimeNode(ClassNode cn) {
     rtField =
         new FieldNode(
-            Opcodes.ASM7,
+            Opcodes.ASM9,
             (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC),
             "runtime",
             Type.getDescriptor(BTraceRuntimeImplBase.class),
@@ -1211,7 +1216,7 @@ final class Preprocessor {
   }
 
   private void addBTraceRuntimeExit(ClassNode cn, InsnNode n, InsnList l) {
-    l.insertBefore(n, getRuntimeExit(cn));
+//    l.insertBefore(n, getRuntimeExit(cn));
   }
 
   private void addJfrHandlerField(ClassNode cn, MethodNode mn) {
@@ -1221,7 +1226,7 @@ final class Preprocessor {
           String fldName = JFR_HANDLER_FIELD_PREFIX + mn.name;
           cn.fields.add(
               new FieldNode(
-                  Opcodes.ASM7,
+                  Opcodes.ASM9,
                   Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                   fldName,
                   Constants.JFREVENTFACTORY_DESC,
@@ -1274,6 +1279,7 @@ final class Preprocessor {
         }
       }
     }
+    classifierMap.put(mn, classifiers);
     return classifiers;
   }
 
@@ -1528,6 +1534,15 @@ final class Preprocessor {
     return next;
   }
 
+  private AbstractInsnNode safeToString(MethodInsnNode n, InsnList l) {
+    if (n.owner.equals(Constants.STRING_BUILDER_INTERNAL) && n.name.equals("append") && n.desc.equals("(Ljava/lang/Object;)Ljava/lang/StringBuilder;")) {
+      n.desc = "(Ljava/lang/String;)Ljava/lang/StringBuilder;";
+      MethodInsnNode min = new MethodInsnNode(Opcodes.INVOKESTATIC, Constants.BTRACE_UTILS, "str", "(Ljava/lang/Object;)Ljava/lang/String;");
+      l.insertBefore(n, min);
+    }
+    return n;
+  }
+
   private AbstractInsnNode unfoldServiceInstantiation(
       ClassNode cn, MethodInsnNode min, InsnList l) {
     if (min.owner.equals(SERVICE_INTERNAL)) {
@@ -1677,7 +1692,7 @@ final class Preprocessor {
       }
     }
     if (addRuntimeExit) {
-      l.add(getRuntimeExit(cn));
+//      l.add(getRuntimeExit(cn));
     }
     l.add(new InsnNode(retType.getOpcode(Opcodes.IRETURN)));
     return l;

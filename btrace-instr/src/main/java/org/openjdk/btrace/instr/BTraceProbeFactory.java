@@ -70,6 +70,8 @@ public final class BTraceProbeFactory {
   }
 
   public BTraceProbeFactory(SharedSettings settings, boolean canLoadPack) {
+    log.info("Probe factory: canLoadPack={}", canLoadPack);
+    Thread.dumpStack();
     this.settings = settings;
     this.canLoadPack = canLoadPack;
   }

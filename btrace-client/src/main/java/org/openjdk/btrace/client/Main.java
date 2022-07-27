@@ -35,6 +35,7 @@ import org.openjdk.btrace.core.comm.Command;
 import org.openjdk.btrace.core.comm.CommandListener;
 import org.openjdk.btrace.core.comm.ExitCommand;
 import org.openjdk.btrace.core.comm.PrintableCommand;
+import org.openjdk.btrace.core.comm.RetransformationStartNotification;
 import org.openjdk.btrace.core.comm.StatusCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -275,6 +276,7 @@ public final class Main {
         if (!new File(fileName).exists()) {
           errorExit("File not found: " + fileName, 1);
         }
+        log.info("Compiling {}", fileName);
         byte[] code = client.compile(fileName, classPath, includePath);
         if (code == null) {
           errorExit("BTrace compilation failed", 1);
@@ -317,6 +319,8 @@ public final class Main {
       if (cmd instanceof PrintableCommand) {
         ((PrintableCommand) cmd).print(out);
         out.flush();
+      } else if (type == Command.RETRANSFORMATION_START) {
+        log.info("Instrumenting {} classes", ((RetransformationStartNotification)cmd).getNumClasses());
       } else if (type == Command.EXIT) {
         exiting = true;
         out.flush();

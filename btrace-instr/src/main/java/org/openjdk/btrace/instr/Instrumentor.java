@@ -27,6 +27,7 @@ package org.openjdk.btrace.instr;
 
 import static org.objectweb.asm.Opcodes.*;
 
+import java.io.PrintWriter;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -68,7 +69,7 @@ public class Instrumentor extends ClassVisitor {
 
   private Instrumentor(
       ClassLoader cl, BTraceProbe bcn, Collection<OnMethod> applicables, ClassVisitor cv) {
-    super(ASM7, cv);
+    super(ASM9, cv);
     this.cl = cl;
     this.bcn = bcn;
     BTraceRuntime.Impl rt = bcn.getRuntime();
@@ -183,7 +184,7 @@ public class Instrumentor extends ClassVisitor {
       methodVisitor = instrumentorFor(om, methodVisitor, mHelper, access, name, desc);
     }
 
-    return new MethodVisitor(ASM7, methodVisitor) {
+    return new MethodVisitor(ASM9, methodVisitor) {
       @Override
       public AnnotationVisitor visitAnnotation(String annoDesc, boolean visible) {
         for (OnMethod om : annotationMatchers) {
@@ -782,6 +783,11 @@ public class Instrumentor extends ClassVisitor {
           }
 
           private void injectBtrace() {
+            Label l = new Label();
+            asm.invokeStatic(Constants.BTRACERT_INTERNAL, "enter", "()Z")
+                .dup()
+                .jump(IFEQ, l);
+
             loadArguments(
                 vr,
                 actionArgTypes,
@@ -791,6 +797,13 @@ public class Instrumentor extends ClassVisitor {
                 selfArg(om.getSelfParameter(), Type.getObjectType(className)));
 
             invokeBTraceAction(asm, om);
+            visitLabel(l);
+            insertFrameAppendStack(l);
+            Label l1 = new Label();
+            asm.jump(IFEQ, l1)
+                .invokeStatic(Constants.BTRACERT_INTERNAL, "leave", "()V");
+            visitLabel(l1);
+            insertFrameAppendStack(l1);
           }
 
           @Override

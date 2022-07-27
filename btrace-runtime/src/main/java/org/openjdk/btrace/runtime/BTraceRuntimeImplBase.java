@@ -29,7 +29,6 @@ import com.sun.management.HotSpotDiagnosticMXBean;
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
@@ -206,10 +205,16 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
 
     @Override
     public void accept(Command t) {
+      log.info("Command {}", t);
+      boolean entered = BTraceRuntime.enter();
       try {
         cmdHandler.onCommand(t);
       } catch (IOException e) {
         e.printStackTrace(System.err);
+      } finally {
+        if (entered) {
+          BTraceRuntime.leave();
+        }
       }
       if (t.getType() == Command.EXIT) {
         exitSignal.set(true);
@@ -245,7 +250,7 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
   private final String className;
 
   // BTrace Class object corresponding to this client
-  private Class clazz;
+  private Class<?> clazz;
 
   // instrumentation level field for each runtime
   private Field level;
@@ -430,6 +435,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
     cmdThread.start();
   }
 
+  private boolean isDefaultImpl() {
+    return queue == null;
+  }
+
   protected final String getClassName() {
     return className;
   }
@@ -463,6 +472,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
       ErrorHandler[] errHandlers,
       ExitHandler[] eHandlers,
       LowMemoryHandler[] lmHandlers) {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     if (log.isDebugEnabled()) {
       log.debug("init: clazz = {}, cl = {}", clazz, cl);
     }
@@ -500,6 +513,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
    * initializer.
    */
   public final void start() {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     initMBeans();
     if (timerHandlers != null) {
       timer = new Timer(true);
@@ -540,6 +557,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
 
   @Override
   public final void handleEvent(EventCommand ecmd) {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     if (eventHandlers != null) {
       if (eventHandlerMap == null) {
         eventHandlerMap = new HashMap<>();
@@ -571,7 +592,7 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
     BTraceRuntimeImplBase cur = getCurrent();
 
     try {
-      return cur.getLevel();
+      return !cur.isDefaultImpl() ? cur.getLevel() : 0;
     } catch (Exception e) {
       return 0;
     }
@@ -580,6 +601,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
   @Override
   public final void setInstrumentationLevel(int level) {
     BTraceRuntimeImplBase cur = getCurrent();
+    if (cur.isDefaultImpl()) {
+      return;
+    }
+
     try {
       cur.setLevel(level);
     } catch (Exception e) {
@@ -603,7 +628,7 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
   /** Handles exception from BTrace probe actions. */
   @Override
   public final void handleException(Throwable th) {
-    if (currentException.get() != null) {
+    if (isDefaultImpl() || currentException.get() != null) {
       return;
     }
     boolean entered = BTraceRuntimeAccess.enter(this);
@@ -637,27 +662,33 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
 
   @Override
   public final int speculation() {
-    return specQueueManager.speculation();
+    return !isDefaultImpl() ? specQueueManager.speculation() : 0;
   }
 
   @Override
   public final void speculate(int id) {
-    specQueueManager.speculate(id);
+    if (!isDefaultImpl()) {
+      specQueueManager.speculate(id);
+    }
   }
 
   @Override
   public final void discard(int id) {
-    specQueueManager.discard(id);
+    if (!isDefaultImpl()) {
+      specQueueManager.discard(id);
+    }
   }
 
   @Override
   public final void commit(int id) {
-    specQueueManager.commit(id, queue);
+    if (!isDefaultImpl()) {
+      specQueueManager.commit(id, queue);
+    }
   }
 
   @Override
   public final long sizeof(Object obj) {
-    return instrumentation.getObjectSize(obj);
+    return !isDefaultImpl() ? instrumentation.getObjectSize(obj) : -1;
   }
 
   // BTrace command line argument functions
@@ -677,7 +708,6 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
 
   @Override
   public final String $(String key) {
-    BTraceRuntime.Impl runtime = getCurrent();
     if (args == null) {
       return null;
     } else {
@@ -742,7 +772,7 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
         String home = System.getProperty("user.home");
         File file = new File(home, "btrace.dotwriter.properties");
         if (file.exists() && file.isFile()) {
-          is = new BufferedInputStream(new FileInputStream(file));
+          is = new BufferedInputStream(Files.newInputStream(file.toPath()));
           dotWriterProps.load(is);
         }
       } catch (Exception exp) {
@@ -814,6 +844,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
 
   @Override
   public final void handleExit(int exitCode) {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     exitImpl(exitCode);
     try {
       cmdThread.join();
@@ -824,6 +858,9 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
   }
 
   public final int getLevel() {
+    if (isDefaultImpl()) {
+      return 0;
+    }
     try {
       return (int) level.get(null);
     } catch (IllegalAccessException ignored) {
@@ -833,6 +870,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
   }
 
   public final void setLevel(int level) {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     try {
       this.level.set(null, level);
     } catch (IllegalAccessException ignored) {
@@ -956,7 +997,7 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
                           } else {
                             handler.invoke(clazz, null, null);
                           }
-                        } catch (Throwable th) {
+                        } catch (Throwable ignored) {
                         } finally {
                           if (entered) {
                             BTraceRuntime.leave();
@@ -981,6 +1022,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
 
   @Override
   public final void send(Command cmd) {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     boolean speculated = specQueueManager.send(cmd);
     if (!speculated) {
       enqueue(cmd);
@@ -1038,6 +1083,10 @@ public abstract class BTraceRuntimeImplBase implements BTraceRuntime.Impl, Runti
   }
 
   private synchronized void exitImpl(int exitCode) {
+    if (isDefaultImpl()) {
+      return;
+    }
+
     boolean entered = enter();
     try {
       if (timer != null) {

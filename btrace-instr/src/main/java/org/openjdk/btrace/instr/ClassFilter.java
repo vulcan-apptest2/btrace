@@ -87,11 +87,14 @@ public class ClassFilter {
     SENSITIVE_CLASSES.add("java/nio/Buffer");
     SENSITIVE_CLASSES.add("java/nio/ByteBuffer");
     SENSITIVE_CLASSES.add("java/nio/HeapByteBuffer");
+//    SENSITIVE_CLASSES.add("javax/swing/MultiUIDefaults");
+//    SENSITIVE_CLASSES.add("javax/swing/UIManager");
     SENSITIVE_CLASSES.add("jdk/internal/misc/");
-    SENSITIVE_CLASSES.add("jdk/internal/reflect/GeneratedConstructorAccessor1");
+    SENSITIVE_CLASSES.add("jdk/internal/reflect/");
+//    SENSITIVE_CLASSES.add("sun/awt/AppContext");
     SENSITIVE_CLASSES.add("sun/invoke/");
-    SENSITIVE_CLASSES.add("java/lang/");
-    SENSITIVE_CLASSES.add("java/util/");
+//    SENSITIVE_CLASSES.add("java/lang/");
+//    SENSITIVE_CLASSES.add("java/util/");
     SENSITIVE_CLASSES.add("com/sun/");
   }
 
